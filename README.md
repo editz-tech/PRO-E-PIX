@@ -1,11 +1,11 @@
-# E-Pix — Passport & ID Photo Studio
+# E-Pix — Portable Passport & ID Photo Studio
 
-Windows desktop application for preparing single or batches of passport-style photos.
+E-Pix is being developed as a portable Windows 10/11 x64 desktop application. **There is no installer in this project stage.** When the portable build is ready, extract the ZIP and launch `E-Pix.exe` from the extracted `E-Pix` folder. Keep the accompanying application files and folders together; do not move the EXE out on its own.
 
 ## Current features
 
 - Select one photo, select multiple photos, or select a folder of photos.
-- Local background removal with a bundled U2Net ONNX model in the Windows release.
+- Local background removal with a bundled U2Net ONNX model in the portable Windows package.
 - Composite the cutout on a white background.
 - Center-crop to a 35:45 portrait ratio and export at 413 × 531 pixels with 300 DPI metadata.
 - Preserve the exact original filename and extension in a separate output folder.
@@ -22,20 +22,13 @@ The white background is produced by compositing the subject cutout over white. S
 
 The 413 × 531 pixel export is a 35:45 approximation at 300 DPI. Authorities may require different framing, dimensions, or other conditions. Confirm the current UAE Emirates ID/passport rules with the relevant authority.
 
-## Run from source on Windows
+## Portable Windows build
 
-1. Install Python 3.11 (64-bit).
-2. Install dependencies: `python -m pip install -r requirements.txt`.
-3. Obtain the official `u2net.onnx` model and place it at `%USERPROFILE%\.u2net\u2net.onnx`.
-4. Run `python app.py`.
+The GitHub Actions workflow `.github/workflows/windows-installer.yml` (workflow display name: **Build E-Pix portable Windows app**) builds a self-contained PyInstaller application folder and packages it as `E-Pix-Portable-Windows.zip`. The ZIP contains `E-Pix.exe`, its runtime files, the bundled local AI model, and this README.
 
-The source application does not download AI models automatically. The GitHub Actions Windows build downloads the official rembg U2Net model, verifies its MD5 checksum, and bundles it in the installer so image processing runs locally after installation without a model download.
+To create a build, open the repository's **Actions** tab, select **Build E-Pix portable Windows app**, and choose **Run workflow**. The ZIP is available as the `E-Pix-Portable-Windows` artifact only after the workflow succeeds and uploads it.
 
-## Build the Windows installer
-
-The GitHub Actions workflow `.github/workflows/windows-installer.yml` builds a Windows 10/11 x64 application folder with PyInstaller, packages it with Inno Setup, and uploads `E-Pix-Setup.exe` as the `E-Pix-Windows-Installer` workflow artifact.
-
-To start a build, open the repository's **Actions** tab, choose **Build E-Pix Windows installer**, and select **Run workflow**. The installer is available only after the workflow succeeds and the artifact is uploaded.
+No setup wizard or installer is produced at this stage. Installer creation will be done only when requested later.
 
 ## Performance
 
