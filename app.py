@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import queue
 import threading
 import time
@@ -23,7 +24,10 @@ SUPPORTED = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 WHITE = (255, 255, 255)
 
 os.environ.setdefault("U2NET_HOME", str(Path.home() / ".u2net"))
-LOCAL_MODEL = Path(os.environ["U2NET_HOME"]) / "u2net.onnx"
+if getattr(sys, "frozen", False):
+    LOCAL_MODEL = Path(getattr(sys, "_MEIPASS")) / "models" / "u2net.onnx"
+else:
+    LOCAL_MODEL = Path(os.environ["U2NET_HOME"]) / "u2net.onnx"
 
 try:
     from rembg import remove as rembg_remove, new_session
