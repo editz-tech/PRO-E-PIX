@@ -69,7 +69,7 @@ def make_passport_image(source: Path, session=None) -> Image.Image:
     if rembg_remove is None:
         raise RuntimeError("Background-removal engine is unavailable. Reinstall E-Pix.")
 
-    # rembg runs locally. Its first run may need a model file to be present locally.
+    # rembg runs locally and is configured to require a pre-provisioned model file.
     cutout = rembg_remove(image, session=session).convert("RGBA")
     white = Image.new("RGBA", cutout.size, (255, 255, 255, 255))
     white.alpha_composite(cutout)
@@ -96,20 +96,21 @@ def make_passport_image(source: Path, session=None) -> Image.Image:
 
 
 def save_same_name(image: Image.Image, destination: Path) -> None:
-    """Save in the same supported image format and with the exact source filename."""
+    """Create the output exclusively: never replace an existing file."""
     suffix = destination.suffix.lower()
-    if suffix in {".jpg", ".jpeg"}:
-        image.save(destination, format="JPEG", quality=95, optimize=True, dpi=(300, 300))
-    elif suffix == ".png":
-        image.save(destination, format="PNG", optimize=True, dpi=(300, 300))
-    elif suffix == ".webp":
-        image.save(destination, format="WEBP", quality=95, method=6)
-    elif suffix == ".bmp":
-        image.save(destination, format="BMP", dpi=(300, 300))
-    elif suffix in {".tif", ".tiff"}:
-        image.save(destination, format="TIFF", dpi=(300, 300), compression="tiff_deflate")
-    else:
-        raise ValueError(f"Unsupported output format: {suffix}")
+    with destination.open("xb") as stream:
+        if suffix in {".jpg", ".jpeg"}:
+            image.save(stream, format="JPEG", quality=95, optimize=True, dpi=(300, 300))
+        elif suffix == ".png":
+            image.save(stream, format="PNG", optimize=True, dpi=(300, 300))
+        elif suffix == ".webp":
+            image.save(stream, format="WEBP", quality=95, method=6)
+        elif suffix == ".bmp":
+            image.save(stream, format="BMP", dpi=(300, 300))
+        elif suffix in {".tif", ".tiff"}:
+            image.save(stream, format="TIFF", dpi=(300, 300), compression="tiff_deflate")
+        else:
+            raise ValueError(f"Unsupported output format: {suffix}")
 
 
 class EPixApp:
@@ -322,8 +323,11 @@ class EPixApp:
                     if destination.exists():
                         skipped += 1
                     else:
-                        save_same_name(result, destination)
-                        saved += 1
+                        try:
+                            save_same_name(result, destination)
+                            saved += 1
+                        except FileExistsError:
+                            skipped += 1
                 except Exception:
                     failed.append(source)
                     self.events.put(("error", source.name, traceback.format_exc(limit=2)))
