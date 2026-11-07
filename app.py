@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import shutil
 import queue
 import threading
 import time
@@ -24,10 +25,9 @@ SUPPORTED = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 WHITE = (255, 255, 255)
 
 os.environ.setdefault("U2NET_HOME", str(Path.home() / ".u2net"))
-if getattr(sys, "frozen", False):
-    LOCAL_MODEL = Path(getattr(sys, "_MEIPASS")) / "models" / "u2net.onnx"
-else:
-    LOCAL_MODEL = Path(os.environ["U2NET_HOME"]) / "u2net.onnx"
+LOCAL_MODEL = Path(os.environ["U2NET_HOME"]) / "u2net.onnx"
+BUNDLED_MODEL = (Path(getattr(sys, "_MEIPASS")) / "models" / "u2net.onnx"
+                 if getattr(sys, "frozen", False) else None)
 
 try:
     from rembg import remove as rembg_remove, new_session
@@ -307,10 +307,13 @@ class EPixApp:
         saved = 0
         try:
             if new_session is not None:
+                if not LOCAL_MODEL.is_file() and BUNDLED_MODEL and BUNDLED_MODEL.is_file():
+                    LOCAL_MODEL.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(BUNDLED_MODEL, LOCAL_MODEL)
                 if not LOCAL_MODEL.is_file():
                     raise RuntimeError(
-                        "Offline AI model not found. Place the u2net.onnx model in "
-                        f"{LOCAL_MODEL} before processing. E-Pix will not download models automatically."
+                        "Offline AI model is missing. Reinstall E-Pix or place u2net.onnx in "
+                        f"{LOCAL_MODEL}. E-Pix will not download models automatically."
                     )
                 session = new_session("u2net", model_path=str(LOCAL_MODEL))
             for index, source in enumerate(files, 1):
