@@ -103,18 +103,23 @@ def save_same_name(image: Image.Image, destination: Path) -> None:
     """Create the output exclusively: never replace an existing file."""
     suffix = destination.suffix.lower()
     with destination.open("xb") as stream:
-        if suffix in {".jpg", ".jpeg"}:
-            image.save(stream, format="JPEG", quality=95, optimize=True, dpi=(300, 300))
-        elif suffix == ".png":
-            image.save(stream, format="PNG", optimize=True, dpi=(300, 300))
-        elif suffix == ".webp":
-            image.save(stream, format="WEBP", quality=95, method=6)
-        elif suffix == ".bmp":
-            image.save(stream, format="BMP", dpi=(300, 300))
-        elif suffix in {".tif", ".tiff"}:
-            image.save(stream, format="TIFF", dpi=(300, 300), compression="tiff_deflate")
-        else:
-            raise ValueError(f"Unsupported output format: {suffix}")
+        try:
+            if suffix in {".jpg", ".jpeg"}:
+                image.save(stream, format="JPEG", quality=95, optimize=True, dpi=(300, 300))
+            elif suffix == ".png":
+                image.save(stream, format="PNG", optimize=True, dpi=(300, 300))
+            elif suffix == ".webp":
+                image.save(stream, format="WEBP", quality=95, method=6)
+            elif suffix == ".bmp":
+                image.save(stream, format="BMP", dpi=(300, 300))
+            elif suffix in {".tif", ".tiff"}:
+                image.save(stream, format="TIFF", dpi=(300, 300), compression="tiff_deflate")
+            else:
+                raise ValueError(f"Unsupported output format: {suffix}")
+        except Exception:
+            stream.close()
+            destination.unlink(missing_ok=True)
+            raise
 
 
 class EPixApp:
@@ -315,7 +320,7 @@ class EPixApp:
                         "Offline AI model is missing. Reinstall E-Pix or place u2net.onnx in "
                         f"{LOCAL_MODEL}. E-Pix will not download models automatically."
                     )
-                session = new_session("u2net", model_path=str(LOCAL_MODEL))
+                session = new_session("u2net")
             for index, source in enumerate(files, 1):
                 if self.cancel_event.is_set():
                     break
@@ -340,7 +345,9 @@ class EPixApp:
                     self.events.put(("error", source.name, traceback.format_exc(limit=2)))
                 self.events.put(("progress", index, len(files), source.name, started))
         except Exception:
-            self.events.put(("fatal", traceback.format_exc(limit=4)))
+            details = traceback.format_exc(limit=4)
+            self.events.put(("error", "Batch setup", details))
+            failed.extend(path for path in files if path not in failed)
         finally:
             self.events.put(("complete", saved, len(files), len(failed), skipped,
                              [str(p) for p in failed], self.cancel_event.is_set()))
@@ -361,8 +368,6 @@ class EPixApp:
                     )
                 elif kind == "error":
                     self.status_text.set(f"Failed: {event[1]}")
-                elif kind == "fatal":
-                    messagebox.showerror(APP_TITLE, event[1])
                 elif kind == "complete":
                     _, saved, total, failed, skipped, failed_paths, cancelled = event
                     self.running = False
