@@ -1,4 +1,4 @@
-name: Build E-Pix Windows installer
+name: Build E-Pix portable Windows app
 
 on:
   workflow_dispatch:
@@ -10,16 +10,18 @@ permissions:
   contents: read
 
 jobs:
-  build-windows:
+  build-portable:
     runs-on: windows-2022
     steps:
       - name: Check out E-Pix
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           architecture: "x64"
+
       - name: Download and verify the local AI model
         shell: pwsh
         run: |
@@ -29,27 +31,41 @@ jobs:
           Invoke-WebRequest -Uri $modelUrl -OutFile $modelPath
           $actual = (Get-FileHash -Path $modelPath -Algorithm MD5).Hash.ToLower()
           $expected = "60024c5c889badc19c04ad937298a77b"
-          if ($actual -ne $expected) { throw "U2Net model checksum mismatch: $actual" }
+          if ($actual -ne $expected) {
+            throw "U2Net model checksum mismatch. Expected $expected, got $actual"
+          }
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
+
       - name: Check Python syntax
         run: python -m py_compile app.py
-      - name: Build E-Pix application folder
+
+      - name: Build portable E-Pix application folder
         shell: pwsh
         run: |
           pyinstaller --noconfirm --clean --windowed --onedir --name "E-Pix" `
             --collect-all rembg --collect-all onnxruntime --collect-all PIL `
             --add-data "models/u2net.onnx;models" app.py
-      - name: Install Inno Setup
-        run: choco install innosetup --yes --no-progress
-      - name: Build Windows installer
-        run: iscc installer/E-Pix.iss
-      - name: Upload installer
+          if (!(Test-Path "dist/E-Pix/E-Pix.exe")) {
+            throw "Portable E-Pix executable was not created."
+          }
+          Copy-Item README.md "dist/E-Pix/README.txt"
+
+      - name: Package portable ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/E-Pix/*" -DestinationPath "dist/E-Pix-Portable-Windows.zip" -CompressionLevel Optimal
+          if (!(Test-Path "dist/E-Pix-Portable-Windows.zip")) {
+            throw "Portable ZIP package was not created."
+          }
+
+      - name: Upload portable package
         uses: actions/upload-artifact@v4
         with:
-          name: E-Pix-Windows-Installer
-          path: dist/installer/E-Pix-Setup.exe
+          name: E-Pix-Portable-Windows
+          path: dist/E-Pix-Portable-Windows.zip
           if-no-files-found: error
           retention-days: 30
