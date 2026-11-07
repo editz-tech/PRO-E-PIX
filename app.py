@@ -6,6 +6,7 @@ in a separate output folder; existing output files are skipped, never overwritte
 from __future__ import annotations
 
 import json
+import os
 import queue
 import threading
 import time
@@ -20,6 +21,9 @@ APP_TITLE = "E-Pix"
 OUTPUT_SIZE = (413, 531)  # 35:45 mm at 300 DPI
 SUPPORTED = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 WHITE = (255, 255, 255)
+
+os.environ.setdefault("U2NET_HOME", str(Path.home() / ".u2net"))
+LOCAL_MODEL = Path(os.environ["U2NET_HOME"]) / "u2net.onnx"
 
 try:
     from rembg import remove as rembg_remove, new_session
@@ -127,6 +131,7 @@ class EPixApp:
         self.cancel_event = threading.Event()
         self.worker: threading.Thread | None = None
         self.running = False
+        self.failed_files: list[Path] = []
 
         self._build_ui()
         self.root.after(120, self._poll_events)
@@ -294,9 +299,15 @@ class EPixApp:
         skipped = 0
         started = time.monotonic()
         session = None
+        saved = 0
         try:
             if new_session is not None:
-                session = new_session("u2net")
+                if not LOCAL_MODEL.is_file():
+                    raise RuntimeError(
+                        "Offline AI model not found. Place the u2net.onnx model in "
+                        f"{LOCAL_MODEL} before processing. E-Pix will not download models automatically."
+                    )
+                session = new_session("u2net", model_path=str(LOCAL_MODEL))
             for index, source in enumerate(files, 1):
                 if self.cancel_event.is_set():
                     break
@@ -312,6 +323,7 @@ class EPixApp:
                         skipped += 1
                     else:
                         save_same_name(result, destination)
+                        saved += 1
                 except Exception:
                     failed.append(source)
                     self.events.put(("error", source.name, traceback.format_exc(limit=2)))
@@ -319,7 +331,7 @@ class EPixApp:
         except Exception:
             self.events.put(("fatal", traceback.format_exc(limit=4)))
         finally:
-            self.events.put(("complete", len(files), len(failed), skipped,
+            self.events.put(("complete", saved, len(files), len(failed), skipped,
                              [str(p) for p in failed], self.cancel_event.is_set()))
 
     def _poll_events(self):
@@ -341,10 +353,10 @@ class EPixApp:
                 elif kind == "fatal":
                     messagebox.showerror(APP_TITLE, event[1])
                 elif kind == "complete":
-                    _, total, failed, skipped, failed_paths, cancelled = event
+                    _, saved, total, failed, skipped, failed_paths, cancelled = event
                     self.running = False
                     self.failed_files = [Path(p) for p in failed_paths]
-                    completed = total - failed - skipped
+                    completed = saved
                     state = "Cancelled" if cancelled else "Finished"
                     self.status_text.set(
                         f"{state}: {completed} saved, {skipped} skipped (already existed), {failed} failed."
