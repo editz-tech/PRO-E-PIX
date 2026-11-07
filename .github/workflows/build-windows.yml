@@ -1,0 +1,38 @@
+name: Build Windows app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app.py'
+      - 'requirements.txt'
+      - '.github/workflows/build-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+      - name: Check Python syntax
+        run: python -m compileall -q app.py
+      - name: Build executable
+        run: pyinstaller --noconfirm --onefile --windowed --name AI-Passport-Photo-Studio --collect-all rembg --collect-all onnxruntime --collect-all pooch --collect-all pymatting app.py
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Passport-Photo-Studio-Windows
+          path: dist/AI-Passport-Photo-Studio.exe
+          if-no-files-found: error
