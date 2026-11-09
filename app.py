@@ -256,6 +256,13 @@ class PassportPhotoStudio:
             initialdir=str(self.output_dir))
         if not path:
             return
+        destination = Path(path)
+        if self.current_path is not None and destination.resolve() == self.current_path.resolve():
+            messagebox.showerror("Protecting original photo", "The output path cannot be the original source photo. Choose the separate output folder.")
+            return
+        if destination.exists():
+            messagebox.showwarning("File already exists", "This output already exists. Choose another filename or folder; E-Pix will not overwrite files.")
+            return
         try:
             output = ImageOps.fit(self.processed, OUTPUT_SIZE, method=Image.Resampling.LANCZOS,
                                   centering=(0.5, 0.5))
