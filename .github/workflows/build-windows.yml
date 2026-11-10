@@ -1,4 +1,4 @@
-name: Build and sign E-Pix Windows app
+name: Build E-Pix personal Windows app
 
 on:
   workflow_dispatch:
@@ -25,13 +25,6 @@ jobs:
     runs-on: windows-2022
     permissions:
       contents: read
-    env:
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
-      AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
-      AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -49,63 +42,21 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall -q app.py
 
-      - name: Build E-Pix executable
+      - name: Build unsigned personal-use executable
         run: pyinstaller --noconfirm --clean --onefile --windowed --name E-Pix --collect-all rembg --collect-all onnxruntime --collect-all pooch --collect-all pymatting app.py
 
-      - name: Check signing configuration
+      - name: Verify executable exists
         shell: pwsh
         run: |
-          $values = @(
-            $env:AZURE_TENANT_ID,
-            $env:AZURE_CLIENT_ID,
-            $env:AZURE_CLIENT_SECRET,
-            $env:AZURE_TRUSTED_SIGNING_ENDPOINT,
-            $env:AZURE_CODE_SIGNING_NAME,
-            $env:AZURE_CERT_PROFILE_NAME
-          )
-          $configured = @($values | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
-          if ($configured -ne 0 -and $configured -ne 6) {
-            throw "Signing configuration is incomplete. Configure all six AZURE_* GitHub Actions secrets, or leave all six empty for an unsigned test build."
+          if (-not (Test-Path "dist/E-Pix.exe")) {
+            throw "Expected dist/E-Pix.exe was not created."
           }
-          if ($configured -eq 0 -and $env:GITHUB_EVENT_NAME -ne "pull_request") {
-            throw "Release signing is required. Configure all six AZURE_* GitHub Actions secrets before running a release build. No unsigned release artifact will be published."
-          }
-          if ($configured -eq 0) {
-            Write-Host "Pull-request validation only: no release artifact will be published because signing credentials are not configured."
-          } else {
-            Write-Host "All signing settings are present. The executable will be digitally signed."
-          }
+          $file = Get-Item "dist/E-Pix.exe"
+          Write-Host "Created unsigned personal-use executable: $($file.FullName) ($($file.Length) bytes)"
 
-      - name: Sign E-Pix executable with Microsoft Artifact Signing
-        if: ${{ github.event_name != 'pull_request' && env.AZURE_TENANT_ID != '' && env.AZURE_CLIENT_ID != '' && env.AZURE_CLIENT_SECRET != '' && env.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && env.AZURE_CODE_SIGNING_NAME != '' && env.AZURE_CERT_PROFILE_NAME != '' }}
-        uses: azure/trusted-signing-action@v0
-        with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
-          trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
-          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
-          files-folder: ${{ github.workspace }}/dist
-          files-folder-filter: exe
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
-
-      - name: Verify executable signature
-        if: ${{ github.event_name != 'pull_request' && env.AZURE_TENANT_ID != '' && env.AZURE_CLIENT_ID != '' && env.AZURE_CLIENT_SECRET != '' && env.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && env.AZURE_CODE_SIGNING_NAME != '' && env.AZURE_CERT_PROFILE_NAME != '' }}
-        shell: pwsh
-        run: |
-          $signature = Get-AuthenticodeSignature -FilePath "dist/E-Pix.exe"
-          if ($signature.Status -ne "Valid") {
-            throw "E-Pix.exe signature verification failed: $($signature.Status) - $($signature.StatusMessage)"
-          }
-          Write-Host "Valid Authenticode signature: $($signature.SignerCertificate.Subject)"
-
-      - name: Upload signed Windows executable
-        if: ${{ github.event_name != 'pull_request' && env.AZURE_TENANT_ID != '' && env.AZURE_CLIENT_ID != '' && env.AZURE_CLIENT_SECRET != '' && env.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && env.AZURE_CODE_SIGNING_NAME != '' && env.AZURE_CERT_PROFILE_NAME != '' }}
+      - name: Upload E-Pix personal-use executable
         uses: actions/upload-artifact@v4
         with:
-          name: E-Pix-Windows
+          name: E-Pix-Personal-Windows-Unsigned
           path: dist/E-Pix.exe
           if-no-files-found: error
