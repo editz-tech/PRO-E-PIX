@@ -37,28 +37,19 @@ pyinstaller --noconfirm --clean --onefile --windowed --name E-Pix --collect-all 
 
 The executable will be placed in `dist/E-Pix.exe`.
 
-## Microsoft Artifact Signing (formerly Trusted Signing)
+## Personal-use Windows build (unsigned)
 
-The GitHub Actions workflow can sign the Windows executable and verify its Authenticode signature before publishing the artifact. Signing is performed only when all six secrets below are configured. Pull-request builds do not receive signing credentials.
+This project is intended for the owner's personal use. The GitHub Actions workflow builds an **unsigned** `E-Pix.exe`; it requires no publisher contract, code-signing certificate, Microsoft Artifact Signing account, or signing secrets.
 
-Add these repository secrets under **Settings → Secrets and variables → Actions**:
+The executable is available as the GitHub Actions artifact named `E-Pix-Personal-Windows-Unsigned` after a successful workflow run.
 
-| Secret | Value |
-|---|---|
-| `AZURE_TENANT_ID` | Microsoft Entra tenant/directory ID |
-| `AZURE_CLIENT_ID` | Application/service-principal client ID |
-| `AZURE_CLIENT_SECRET` | Client secret for that application |
-| `AZURE_TRUSTED_SIGNING_ENDPOINT` | Artifact Signing endpoint for the account's supported region |
-| `AZURE_CODE_SIGNING_NAME` | Artifact Signing account name |
-| `AZURE_CERT_PROFILE_NAME` | Verified certificate profile name |
+### Windows Smart App Control
 
-The Entra application must be authorized for the Artifact Signing account and have the **Trusted Signing Certificate Profile Signer** role. Keep credentials in GitHub Actions secrets; never commit them to the repository.
+An unsigned executable may be blocked by Windows 11 Smart App Control. Microsoft does not provide a per-app allow-list or bypass for Smart App Control. Its cloud reputation service may allow some apps, but an unsigned app with no established reputation can be blocked.
 
-Microsoft's current documentation says Artifact Signing is available to organizations in the United States, Canada, the European Union, and the United Kingdom, while individual developers are currently limited to the United States and Canada. An individual publisher based in the UAE therefore cannot currently rely on Microsoft Artifact Signing eligibility. Check the current rules before purchasing or configuring the service.
+Do not install a certificate from an unknown source or disable Windows security just to run an unverified file. Only run a build you have obtained from this repository and trust. If Smart App Control blocks it, keep the protection enabled unless you have independently decided to change that Windows security setting after reviewing Microsoft's current guidance. This repository does not attempt to bypass Windows security.
 
-For a UAE-based individual publisher, the alternative is to obtain a publicly trusted Authenticode code-signing certificate from a CA that explicitly accepts UAE-based individual applicants. Ask the CA to confirm identity eligibility, supported key storage/signing method, and Windows Authenticode compatibility before paying. The workflow in this repository currently automates Microsoft Artifact Signing only; it does not yet integrate a third-party CA's remote signing service. Do not put a private key or certificate password in source code.
-
-A valid digital signature confirms publisher identity and file integrity. It does not guarantee that Smart App Control or SmartScreen will immediately allow a new app; reputation and Microsoft's security assessment can still affect warnings.
+No publisher identity or digital signature is claimed for this personal-use build.
 
 ## Current limitations
 
