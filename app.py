@@ -5,6 +5,27 @@ Batch processing reuses the same rembg operation without altering that method.
 """
 from __future__ import annotations
 
+import os
+import sys
+import logging
+from pathlib import Path
+
+# PyInstaller --windowed applications may start with stdout/stderr set to None.
+# Some native/AI dependencies (including ONNX Runtime) write diagnostics there.
+# Give them a real stream before importing rembg or initializing inference.
+_LOG_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "E-Pix" / "logs"
+try:
+    _LOG_DIR.mkdir(parents=True, exist_ok=True)
+    _LOG_FILE = (_LOG_DIR / "epix.log").open("a", encoding="utf-8", buffering=1)
+except OSError:
+    _LOG_FILE = open(os.devnull, "w", encoding="utf-8")
+if sys.stdout is None:
+    sys.stdout = _LOG_FILE
+if sys.stderr is None:
+    sys.stderr = _LOG_FILE
+logging.basicConfig(filename=str(_LOG_DIR / "epix-errors.log") if _LOG_DIR.exists() else os.devnull,
+                    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
@@ -135,7 +156,8 @@ class PassportPhotoStudio:
             self.show_preview()
             self.status.set("Background replaced with white.")
         except Exception as exc:
-            messagebox.showerror("Background removal failed", str(exc))
+            logging.exception("Single-photo background removal failed")
+            messagebox.showerror("Background removal failed", f"{type(exc).__name__}: {exc}\n\nA diagnostic log was saved in the E-Pix logs folder.")
 
     def crop_photo(self) -> None:
         if self.processed is None:
@@ -239,7 +261,8 @@ class PassportPhotoStudio:
                 output.save(destination, format=fmt, **save_options)
                 self.batch_ok += 1
         except Exception as exc:
-            self.batch_failed.append(f"{source.name}: {exc}")
+            logging.exception("Bulk processing failed for %s", source)
+            self.batch_failed.append(f"{source.name}: {type(exc).__name__}: {exc}")
         self.progress.configure(value=self.batch_done)
         self.progress_label.set(f"{self.batch_done} / {self.batch_done + len(self.batch_queue)} completed")
         self.status.set(f"Processing {source.name}…")
