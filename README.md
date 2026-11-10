@@ -51,6 +51,38 @@ Do not install a certificate from an unknown source or disable Windows security 
 
 No publisher identity or digital signature is claimed for this personal-use build.
 
+## Free local self-signing (personal PC only)
+
+The GitHub Actions build remains unsigned. For personal use, you can sign the downloaded `E-Pix.exe` on your own Windows PC with a free self-signed certificate:
+
+1. Download and extract the `E-Pix-Personal-Windows-Unsigned` artifact from a successful Actions run.
+2. On your Windows PC, install the Windows 10/11 SDK if SignTool is not already installed.
+3. Open PowerShell in the repository folder and run:
+
+   ```powershell
+   .\scripts\create-local-signing-cert.ps1
+   ```
+
+   This creates an RSA-3072/SHA-256 code-signing certificate in your **Current User** certificate store. Its private key is marked non-exportable and is not written to the repository. Only the public certificate is exported under `%LOCALAPPDATA%\E-Pix\signing\`.
+4. Optional: if you want Windows Authenticode to trust this exact certificate for your Windows user, run:
+
+   ```powershell
+   .\scripts\create-local-signing-cert.ps1 -TrustForThisUser
+   ```
+
+   This adds only the public certificate to your current-user Root and TrustedPublisher stores. Do not install certificates received from other people.
+5. Copy the downloaded `E-Pix.exe` into the repository's `dist` folder (or pass its full path), then sign and verify it:
+
+   ```powershell
+   .\scripts\sign-local-build.ps1 -ExePath "C:\path\to\E-Pix.exe"
+   ```
+
+   The script signs with SHA-256 and verifies the signature. Re-sign every new build after downloading it.
+
+**Important:** This self-signed identity is trusted only on your own configured Windows user account. It is not issued by a public certificate authority, does not establish a publicly verified publisher identity, and does not make E-Pix trusted on another PC. It **does not satisfy Smart App Control's trusted-CA requirement** and cannot bypass Smart App Control. Keep Smart App Control enabled; do not weaken Windows security to run the app. If Smart App Control blocks E-Pix, a local self-signed certificate will not solve that block.
+
+Never upload the private key, export a PFX, commit certificate files containing private keys, or add signing secrets to GitHub Actions. The hosted build intentionally remains unsigned; signing happens only on your own PC.
+
 ## Current limitations
 
 - Crop uses the image center; head/eye alignment is not automatically detected.
