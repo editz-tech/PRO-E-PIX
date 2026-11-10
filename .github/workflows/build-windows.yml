@@ -67,8 +67,11 @@ jobs:
           if ($configured -ne 0 -and $configured -ne 6) {
             throw "Signing configuration is incomplete. Configure all six AZURE_* GitHub Actions secrets, or leave all six empty for an unsigned test build."
           }
+          if ($configured -eq 0 -and $env:GITHUB_EVENT_NAME -ne "pull_request") {
+            throw "Release signing is required. Configure all six AZURE_* GitHub Actions secrets before running a release build. No unsigned release artifact will be published."
+          }
           if ($configured -eq 0) {
-            Write-Host "Signing secrets are not configured. This run will produce an UNSIGNED test executable."
+            Write-Host "Pull-request validation only: no release artifact will be published because signing credentials are not configured."
           } else {
             Write-Host "All signing settings are present. The executable will be digitally signed."
           }
@@ -99,7 +102,8 @@ jobs:
           }
           Write-Host "Valid Authenticode signature: $($signature.SignerCertificate.Subject)"
 
-      - name: Upload Windows executable
+      - name: Upload signed Windows executable
+        if: ${{ github.event_name != 'pull_request' && env.AZURE_TENANT_ID != '' && env.AZURE_CLIENT_ID != '' && env.AZURE_CLIENT_SECRET != '' && env.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && env.AZURE_CODE_SIGNING_NAME != '' && env.AZURE_CERT_PROFILE_NAME != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: E-Pix-Windows
