@@ -25,6 +25,13 @@ jobs:
     runs-on: windows-2022
     permissions:
       contents: read
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+      AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+      AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -47,13 +54,6 @@ jobs:
 
       - name: Check signing configuration
         shell: pwsh
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
-          AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
-          AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
         run: |
           $values = @(
             $env:AZURE_TENANT_ID,
@@ -74,7 +74,7 @@ jobs:
           }
 
       - name: Sign E-Pix executable with Microsoft Artifact Signing
-        if: ${{ github.event_name != 'pull_request' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && secrets.AZURE_CODE_SIGNING_NAME != '' && secrets.AZURE_CERT_PROFILE_NAME != '' }}
+        if: ${{ github.event_name != 'pull_request' && env.AZURE_TENANT_ID != '' && env.AZURE_CLIENT_ID != '' && env.AZURE_CLIENT_SECRET != '' && env.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && env.AZURE_CODE_SIGNING_NAME != '' && env.AZURE_CERT_PROFILE_NAME != '' }}
         uses: azure/trusted-signing-action@v0
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -90,7 +90,7 @@ jobs:
           timestamp-digest: SHA256
 
       - name: Verify executable signature
-        if: ${{ github.event_name != 'pull_request' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && secrets.AZURE_CODE_SIGNING_NAME != '' && secrets.AZURE_CERT_PROFILE_NAME != '' }}
+        if: ${{ github.event_name != 'pull_request' && env.AZURE_TENANT_ID != '' && env.AZURE_CLIENT_ID != '' && env.AZURE_CLIENT_SECRET != '' && env.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && env.AZURE_CODE_SIGNING_NAME != '' && env.AZURE_CERT_PROFILE_NAME != '' }}
         shell: pwsh
         run: |
           $signature = Get-AuthenticodeSignature -FilePath "dist\\E-Pix.exe"
