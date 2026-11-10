@@ -83,7 +83,7 @@ jobs:
           endpoint: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
           trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
           certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
-          files-folder: ${{ github.workspace }}\\dist
+          files-folder: ${{ github.workspace }}/dist
           files-folder-filter: exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
@@ -93,7 +93,7 @@ jobs:
         if: ${{ github.event_name != 'pull_request' && env.AZURE_TENANT_ID != '' && env.AZURE_CLIENT_ID != '' && env.AZURE_CLIENT_SECRET != '' && env.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && env.AZURE_CODE_SIGNING_NAME != '' && env.AZURE_CERT_PROFILE_NAME != '' }}
         shell: pwsh
         run: |
-          $signature = Get-AuthenticodeSignature -FilePath "dist\\E-Pix.exe"
+          $signature = Get-AuthenticodeSignature -FilePath "dist/E-Pix.exe"
           if ($signature.Status -ne "Valid") {
             throw "E-Pix.exe signature verification failed: $($signature.Status) - $($signature.StatusMessage)"
           }
