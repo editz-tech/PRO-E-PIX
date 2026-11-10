@@ -1,4 +1,4 @@
-# AI Passport Photo Studio
+# E-Pix Passport Photo Studio
 
 A Windows desktop starter app for preparing passport-style photos.
 
@@ -7,15 +7,16 @@ A Windows desktop starter app for preparing passport-style photos.
 - Open a photo and preview it.
 - Crop to a 35:45 portrait ratio.
 - Export a 413 × 531 pixel JPEG or PNG at 300 DPI.
-- Optional background removal using `rembg` (install separately; model download may be required).
-
-> Important: This is a starter utility, not a guarantee of compliance with every country's passport-photo rules. Check the destination authority's requirements. The crop is centered and does not automatically detect head position.
+- Optional white-background removal using `rembg`.
+- Select multiple photos or process a folder in bulk.
+- Preserve input filenames and skip existing output files rather than overwrite them.
 
 ## Requirements
 
-- Python 3.10 or newer recommended
+- Windows 10/11
+- Python 3.11 for local development
 - Pillow
-- Optional: `rembg` for background removal
+- `rembg[cpu]` (background removal and bulk white-background processing)
 
 ## Run on Windows
 
@@ -27,28 +28,42 @@ pip install -r requirements.txt
 python app.py
 ```
 
-To enable background removal, install the optional dependency:
-
-```powershell
-pip install rembg
-```
-
-Depending on the environment, `rembg` may need additional runtime/model downloads.
-
 ## Build a Windows executable
 
 ```powershell
 pip install pyinstaller
-pyinstaller --noconfirm --onefile --windowed --name AI-Passport-Photo-Studio app.py
+pyinstaller --noconfirm --clean --onefile --windowed --name E-Pix --collect-all rembg --collect-all onnxruntime --collect-all pooch --collect-all pymatting app.py
 ```
 
-The executable will be placed in `dist/`.
+The executable will be placed in `dist/E-Pix.exe`.
+
+## Microsoft Artifact Signing (formerly Trusted Signing)
+
+The GitHub Actions workflow can sign the Windows executable and verify its Authenticode signature before publishing the artifact. Signing is performed only when all six secrets below are configured. Pull-request builds do not receive signing credentials.
+
+Add these repository secrets under **Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+|---|---|
+| `AZURE_TENANT_ID` | Microsoft Entra tenant/directory ID |
+| `AZURE_CLIENT_ID` | Application/service-principal client ID |
+| `AZURE_CLIENT_SECRET` | Client secret for that application |
+| `AZURE_TRUSTED_SIGNING_ENDPOINT` | Artifact Signing endpoint for the account's supported region |
+| `AZURE_CODE_SIGNING_NAME` | Artifact Signing account name |
+| `AZURE_CERT_PROFILE_NAME` | Verified certificate profile name |
+
+The Entra application must be authorized for the Artifact Signing account and have the **Trusted Signing Certificate Profile Signer** role. Keep credentials in GitHub Actions secrets; never commit them to the repository.
+
+Microsoft currently documents Artifact Signing availability for customers in the United States, Canada, the European Union, and the United Kingdom. Check current regional eligibility before purchasing or configuring the service. If the service is unavailable for your location, use a publicly trusted Authenticode code-signing certificate from a certificate authority that can verify your individual publisher identity; the current Azure signing step will not sign until valid Azure Artifact Signing credentials are configured.
+
+A valid digital signature confirms publisher identity and file integrity. It does not guarantee that Smart App Control or SmartScreen will immediately allow a new app; reputation and Microsoft's security assessment can still affect warnings.
 
 ## Current limitations
 
-- Background removal is optional and may not be installed.
 - Crop uses the image center; head/eye alignment is not automatically detected.
-- Output dimensions are a useful print size, not a promise that all agencies accept the photo.
+- The app does not reshape faces or change clothing.
+- Output dimensions do not guarantee acceptance by every passport or ID authority.
+- The existing white-background-removal method is retained; it may not remove shadows that fall on the person.
 
 ## License
 
