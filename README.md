@@ -54,7 +54,9 @@ Add these repository secrets under **Settings → Secrets and variables → Acti
 
 The Entra application must be authorized for the Artifact Signing account and have the **Trusted Signing Certificate Profile Signer** role. Keep credentials in GitHub Actions secrets; never commit them to the repository.
 
-Microsoft currently documents Artifact Signing availability for customers in the United States, Canada, the European Union, and the United Kingdom. Check current regional eligibility before purchasing or configuring the service. If the service is unavailable for your location, use a publicly trusted Authenticode code-signing certificate from a certificate authority that can verify your individual publisher identity; the current Azure signing step will not sign until valid Azure Artifact Signing credentials are configured.
+Microsoft's current documentation says Artifact Signing is available to organizations in the United States, Canada, the European Union, and the United Kingdom, while individual developers are currently limited to the United States and Canada. An individual publisher based in the UAE therefore cannot currently rely on Microsoft Artifact Signing eligibility. Check the current rules before purchasing or configuring the service.
+
+For a UAE-based individual publisher, the alternative is to obtain a publicly trusted Authenticode code-signing certificate from a CA that explicitly accepts UAE-based individual applicants. Ask the CA to confirm identity eligibility, supported key storage/signing method, and Windows Authenticode compatibility before paying. The workflow in this repository currently automates Microsoft Artifact Signing only; it does not yet integrate a third-party CA's remote signing service. Do not put a private key or certificate password in source code.
 
 A valid digital signature confirms publisher identity and file integrity. It does not guarantee that Smart App Control or SmartScreen will immediately allow a new app; reputation and Microsoft's security assessment can still affect warnings.
 
